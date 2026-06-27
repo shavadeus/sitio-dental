@@ -1,174 +1,162 @@
-/**
- * Script mejorado para la página del Dr. Sebastián Jiménez
- */
-
+// Configuración Global de la Aplicación
 const CONFIG = {
-  whatsappPhone: '529613757067',
-  animationDuration: 300,
-  formValidation: true,
+  whatsappPhone: "529610000000", // REEMPLAZAR con el número de WhatsApp real del consultorio
 };
 
-const navToggle = document.querySelector('.nav-toggle');
-const nav = document.querySelector('.site-nav');
-const form = document.querySelector('.appointment-form');
-const formNote = document.querySelector('.form-note');
+// Elementos de la interfaz de usuario
+const form = document.getElementById('appointment-form');
+const formNote = document.getElementById('form-note');
+const textarea = document.getElementById('message');
+const charCount = document.querySelector('.char-count');
 
-// Navegación móvil
+// Inicializador General
+document.addEventListener('DOMContentLoaded', () => {
+  initNavigation();
+  initFormValidation();
+  initCharacterCounter();
+  initScrollAnimations();
+});
+
+// 1. Navegación fluida al hacer clic en los enlaces del menú
 function initNavigation() {
-  if (!navToggle || !nav) return;
-
-  navToggle.addEventListener('click', () => {
-    const isOpen = nav.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', String(isOpen));
-  });
-
-  nav.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', () => {
-      nav.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
     });
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && nav.classList.contains('is-open')) {
-      nav.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-    }
   });
 }
 
-// Validación de formulario
-function validateForm() {
+// 2. Validación Avanzada del Formulario y Conexión Premium con WhatsApp
+function initFormValidation() {
   if (!form) return;
 
-  const fields = {
-    name: document.getElementById('name'),
-    phone: document.getElementById('phone'),
-    service: document.getElementById('service'),
-  };
-
-  const validators = {
-    name: (value) => {
-      if (value.trim().length < 3) {
-        return 'El nombre debe tener al menos 3 caracteres';
-      }
-      return '';
-    },
-    phone: (value) => {
-      const phoneRegex = /^[0-9]{10}$/;
-      if (!phoneRegex.test(value)) {
-        return 'El teléfono debe tener exactamente 10 dígitos';
-      }
-      return '';
-    },
-    service: (value) => {
-      if (!value) {
-        return 'Selecciona un servicio';
-      }
-      return '';
-    },
-  };
-
-  // Validar en tiempo real
-  Object.entries(fields).forEach(([key, field]) => {
-    if (!field) return;
-
-    field.addEventListener('blur', () => {
-      const error = validators[key](field.value);
-      const errorElement = document.getElementById(`${key}-error`);
-      if (errorElement) {
-        errorElement.textContent = error;
-        field.setAttribute('aria-invalid', error ? 'true' : 'false');
-      }
-    });
-
-    field.addEventListener('input', () => {
-      const errorElement = document.getElementById(`${key}-error`);
-      if (errorElement && errorElement.textContent) {
-        const error = validators[key](field.value);
-        errorElement.textContent = error;
-      }
-    });
-  });
-
-  // Validar al enviar
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    let hasErrors = false;
-
-    Object.entries(fields).forEach(([key, field]) => {
-      const error = validators[key](field.value);
-      if (error) hasErrors = true;
-      const errorElement = document.getElementById(`${key}-error`);
-      if (errorElement) {
-        errorElement.textContent = error;
-        field.setAttribute('aria-invalid', error ? 'true' : 'false');
-      }
-    });
-
-    if (!hasErrors) {
-      submitForm();
-    } else {
-      formNote.textContent = 'Por favor, corrige los errores en el formulario';
-      formNote.style.color = '#dc2626';
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (validateAllFields()) {
+      executeFormSubmission();
     }
   });
-}
 
-// Contador de caracteres
-function initCharacterCounter() {
-  const textarea = document.getElementById('message');
-  const charCount = document.querySelector('.char-count');
-
-  if (!textarea || !charCount) return;
-
-  textarea.addEventListener('input', () => {
-    charCount.textContent = `${textarea.value.length}/500`;
+  // Validación interactiva en tiempo real mientras el usuario escribe
+  ['input', 'change'].forEach(eventType => {
+    form.addEventListener(eventType, (e) => {
+      if (e.target.required) {
+        validateField(e.target);
+      }
+    });
   });
 }
 
-// Enviar formulario
-function submitForm() {
-  if (!form) return;
+function validateField(field) {
+  const errorElement = document.getElementById(`${field.id}-error`);
+  if (!errorElement) return true;
 
+  if (!field.value.trim()) {
+    errorElement.textContent = 'Este campo es obligatorio para coordinar tu consulta.';
+    field.setAttribute('aria-invalid', 'true');
+    return false;
+  }
+
+  errorElement.textContent = '';
+  field.setAttribute('aria-invalid', 'false');
+  return true;
+}
+
+function validateAllFields() {
+  let isValid = true;
+  form.querySelectorAll('[required]').forEach(field => {
+    if (!validateField(field)) {
+      isValid = false;
+    }
+  });
+  return isValid;
+}
+
+function executeFormSubmission() {
   const formData = new FormData(form);
   const name = formData.get('name');
   const service = formData.get('service');
   const message = formData.get('message');
 
-  let whatsappMessage = `Hola, soy ${name}. Quiero agendar una cita para: ${service}.`;
-  if (message) whatsappMessage += ` ${message}`;
+  // Enriquecimiento inteligente del mensaje según el servicio
+  let contextualNote = '';
+  if (service === 'Dolor o urgencia') {
+    contextualNote = ' 🚨 ATENCIÓN PRIORITARIA: El paciente reporta dolor severo o caso de emergencia.';
+  } else if (service === 'Tratamiento infantil') {
+    contextualNote = ' 👶 Consulta odontopediátrica para menor de edad.';
+  }
+
+  let whatsappMessage = `Hola Dr. Sebastián Jiménez, me gustaría agendar una cita.\n\n`;
+  whatsappMessage += `*Paciente:* ${name}\n`;
+  whatsappMessage += `*Servicio solicitado:* ${service}${contextualNote}\n`;
+  
+  if (message.trim()) {
+    whatsappMessage += `*Notas/Síntomas:* ${message}`;
+  }
 
   const whatsappUrl = `https://api.whatsapp.com/send/?phone=${CONFIG.whatsappPhone}&text=${encodeURIComponent(whatsappMessage)}&type=phone_number&app_absent=0`;
 
-  formNote.textContent = '✓ Solicitud preparada. Te llevaremos a WhatsApp para confirmar.';
-  formNote.style.color = '#17a65a';
+  if (formNote) {
+    formNote.textContent = '✓ Solicitud procesada con éxito. Redirigiendo de forma segura a WhatsApp...';
+    formNote.style.color = '#17a65a';
+  }
 
-  setTimeout(() => window.open(whatsappUrl, '_blank', 'noopener,noreferrer'), 500);
-  
+  // Apertura asíncrona del chat de WhatsApp
   setTimeout(() => {
-    form.reset();
-    formNote.textContent = '';
-    document.querySelectorAll('.form-error').forEach((el) => {
-      el.textContent = '';
-    });
-    document.querySelectorAll('input, select').forEach((field) => {
-      field.setAttribute('aria-invalid', 'false');
-    });
-    document.querySelector('.char-count').textContent = '0/500';
-  }, 1500);
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    resetFormState();
+  }, 800);
 }
 
-// Inicializar
-function init() {
-  initNavigation();
-  validateForm();
-  initCharacterCounter();
-  console.log('✓ Página del Dr. Sebastián Jiménez inicializada correctamente');
+function resetFormState() {
+  form.reset();
+  if (formNote) formNote.textContent = '';
+  if (charCount) charCount.textContent = '0/500';
+  form.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+  form.querySelectorAll('[aria-invalid]').forEach(el => el.setAttribute('aria-invalid', 'false'));
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+// 3. Contador de Caracteres Dinámico para el Textarea
+function initCharacterCounter() {
+  if (!textarea || !charCount) return;
+
+  textarea.addEventListener('input', () => {
+    const count = textarea.value.length;
+    charCount.textContent = `${count}/500`;
+    if (count >= 450) {
+      charCount.style.color = 'var(--red-500)';
+    } else {
+      charCount.style.color = 'var(--gray-500)';
+    }
+  });
+}
+
+// 4. Lógica de Animaciones en Scroll de Alto Rendimiento (Intersection Observer)
+function initScrollAnimations() {
+  const animatedElements = document.querySelectorAll('.animate-on-scroll');
+  if (animatedElements.length === 0) return;
+
+  const observerOptions = {
+    root: null,
+    rootMargin: '0px 0px -60px 0px',
+    threshold: 0.1
+  };
+
+  const observer = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target); // Desactivar observador individual una vez animado
+      }
+    });
+  }, observerOptions);
+
+  animatedElements.forEach(element => observer.observe(element));
 }
